@@ -6,7 +6,7 @@
 ;; Version: 0.1.0
 ;; Package-Requires: ((emacs "28.1") (eat "0.9"))
 ;; Keywords: tools, terminals
-;; URL: https://github.com/danielmunoz/emacs-claude-cli
+;; URL: https://github.com/koprotk/emacs-claude-cli
 
 ;;; Commentary:
 
