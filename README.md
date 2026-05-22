@@ -1,111 +1,55 @@
-# copilot-cli.el
+# emacs-claude-cli
 
-Launch [GitHub Copilot CLI](https://github.com/github/copilot-cli) inside Emacs using an [Eat](https://codeberg.org/akib/emacs-eat) terminal buffer.
-
-Running `M-x copilot-cli` splits your frame vertically (side by side) and opens a full terminal session rooted at your project directory — no context-switching required.
+Launch the [Claude Code](https://docs.anthropic.com/en/docs/claude-code) CLI
+inside an [Eat](https://codeberg.org/akib/emacs-eat) terminal buffer, scoped
+to the current project's root directory.
 
 ## Requirements
 
 - Emacs 28.1+
-- [eat](https://codeberg.org/akib/emacs-eat) 0.9+
-- [copilot-cli](https://github.com/github/copilot-cli) installed and available in your `PATH`
+- [`eat`](https://codeberg.org/akib/emacs-eat) 0.9+
+- The `claude` executable on your `PATH`
 
 ## Installation
 
-### Manual
-
-Clone this repository and add it to your `load-path`:
+Drop `claude-cli.el` somewhere on your `load-path` and:
 
 ```elisp
-(add-to-list 'load-path "/path/to/emacs-copilot-cli")
-(require 'copilot-cli)
+(require 'claude-cli)
 ```
 
-### use-package (with straight.el)
+## Commands
 
-```elisp
-(use-package copilot-cli
-  :straight (:host github :repo "koprotk/emacs-copilot-cli")
-  :commands (copilot-cli copilot-cli-stop copilot-cli-send-buffer copilot-cli-send-region))
-```
-
-### Doom Emacs
-
-In `packages.el`:
-
-```elisp
-(package! copilot-cli
-  :recipe (:host github :repo "koprotk/emacs-copilot-cli"))
-```
-
-In `config.el`:
-
-```elisp
-(use-package! copilot-cli
-  :commands (copilot-cli copilot-cli-stop copilot-cli-send-buffer copilot-cli-send-region))
-```
-
-## Usage
-
-| Command                    | Description                                      |
-|----------------------------|--------------------------------------------------|
-| `M-x copilot-cli`         | Start or switch to the Copilot CLI session       |
-| `M-x copilot-cli-stop`    | Stop the session and close its window            |
-| `M-x copilot-cli-send-buffer` | Send the entire current buffer to the CLI    |
-| `M-x copilot-cli-send-region` | Send the selected region to the CLI          |
-
-If a session is already running, `copilot-cli` switches to the existing buffer instead of starting a new one.
-
-`copilot-cli-stop` works regardless of which buffer or project you call it from — it will find the active session even if the current project context differs from where the session was started.
-
-### Sending buffer content
-
-You can send any buffer's content directly to the Copilot CLI session — no manual copy-paste needed. This is especially useful for piping compilation output, test results, or error logs:
-
-```elisp
-;; From a *compilation* buffer, send everything:
-M-x copilot-cli-send-buffer
-
-;; Or select a region first, then:
-M-x copilot-cli-send-region
-```
-
-Content is sent using [bracketed paste](https://en.wikipedia.org/wiki/Bracketed-paste) so multiline text is delivered as a single paste event. After sending, focus moves to the Copilot CLI window so you can immediately type your question.
-
-### Keybinding examples
-
-Bind it to whatever feels natural:
-
-```elisp
-;; Vanilla Emacs
-(global-set-key (kbd "C-c c") #'copilot-cli)
-
-;; Evil / Doom / Spacemacs leader key
-(map! :leader :desc "Copilot CLI" "o c" #'copilot-cli)
-```
+| Command                    | Description                                                |
+|----------------------------|------------------------------------------------------------|
+| `M-x claude-cli`           | Start or switch to the Claude CLI session for the project. |
+| `M-x claude-cli-stop`      | Stop the running session and close its window.             |
+| `M-x claude-cli-clear`     | Clear the current conversation context (`/clear`).         |
+| `M-x claude-cli-send-buffer` | Send the entire current buffer to the session.           |
+| `M-x claude-cli-send-region` | Send the active region to the session.                   |
+| `M-x claude-cli-send-escape` | Send a raw `ESC` to Claude (see evil-mode note below).   |
 
 ## Customization
 
-All options live under `M-x customize-group RET copilot-cli`:
+| Variable                  | Default          | Purpose                                  |
+|---------------------------|------------------|------------------------------------------|
+| `claude-cli-program`      | `"claude"`       | Executable used to start the CLI.        |
+| `claude-cli-args`         | `'()`            | Extra arguments passed to the CLI.       |
+| `claude-cli-buffer-name`  | `"*claude-cli*"` | Base name for the terminal buffer.       |
 
-| Variable                  | Default           | Description                    |
-|---------------------------|-------------------|--------------------------------|
-| `copilot-cli-program`     | `"copilot"`       | The executable to run          |
-| `copilot-cli-buffer-name` | `"*copilot-cli*"` | Name of the terminal buffer    |
-
-Example — use a different CLI command:
+Example:
 
 ```elisp
-(setq copilot-cli-program "gh copilot")
+(setq claude-cli-args '("--dangerously-skip-permissions"))
 ```
 
-## How it works
+## evil-mode compatibility
 
-1. Detects the project root via Emacs's built-in `project.el`.
-2. Splits the frame vertically (`split-window-right`).
-3. Launches an Eat terminal running `copilot-cli` in that root.
-4. Reuses the existing session if one is already alive.
+Claude Code uses `ESC` for several TUI interactions, which collides with
+`evil-mode`'s default binding that leaves insert state. To avoid the
+conflict, `claude-cli` locally rebinds `<escape>` inside the Claude buffer
+so it sends a raw `ESC` to the TUI instead — the override is scoped to that
+single buffer, so the rest of your evil bindings (including `C-w` window
+navigation) keep working everywhere else.
 
-## License
-
-GPL-3.0-or-later
+If `evil` isn't loaded, nothing changes.
