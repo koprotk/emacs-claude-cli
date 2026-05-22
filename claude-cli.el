@@ -6,7 +6,7 @@
 ;; Version: 0.1.0
 ;; Package-Requires: ((emacs "28.1") (eat "0.9"))
 ;; Keywords: tools, terminals
-;; URL: https://github.com/koprotk/emacs-claude-cli
+;; URL: https://github.com/danielmunoz/emacs-claude-cli
 
 ;;; Commentary:
 
@@ -22,6 +22,7 @@
 ;;   M-x claude-cli-clear       Clear the current conversation context.
 ;;   M-x claude-cli-send-buffer Send the entire current buffer to the session.
 ;;   M-x claude-cli-send-region Send the active region to the session.
+;;   M-x claude-cli-send-escape Send a raw ESC (used to bypass evil-mode).
 ;;
 ;; Customization:
 ;;
@@ -97,6 +98,13 @@ its buffer instead of starting a new one."
           ;; all TUI interactions have keyboard equivalents.  Disabling it
           ;; lets click-drag text selection work normally for copying paths.
           (setq-local eat-enable-mouse nil)
+          ;; evil-mode binds <escape> to leave insert state, which shadows
+          ;; Claude's own ESC handling.  Override it locally so ESC reaches
+          ;; the TUI; other evil bindings (incl. C-w window nav) stay intact.
+          (when (and (featurep 'evil) (fboundp 'evil-local-set-key))
+            (dolist (state '(insert normal visual motion))
+              (evil-local-set-key state (kbd "<escape>")
+                                  #'claude-cli-send-escape)))
           (rename-buffer buf-name t)))))))
 
 (defun claude-cli--find-buffer ()
@@ -129,6 +137,18 @@ its buffer instead of starting a new one."
   (interactive "r")
   (claude-cli--send-string
    (buffer-substring-no-properties beg end)))
+
+;;;###autoload
+(defun claude-cli-send-escape ()
+  "Send a raw ESC to the Claude CLI session.
+Used to bypass `evil-mode' so ESC reaches Claude instead of
+leaving insert state."
+  (interactive)
+  (let* ((buf (claude-cli--find-buffer))
+         (proc (and buf (get-buffer-process buf))))
+    (unless (and proc (process-live-p proc))
+      (user-error "No active Claude CLI session found"))
+    (process-send-string proc "\e")))
 
 ;;;###autoload
 (defun claude-cli-clear ()
