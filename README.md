@@ -46,10 +46,8 @@ Example:
 ## evil-mode compatibility
 
 Claude Code uses `ESC` for several TUI interactions, which collides with
-`evil-mode`'s default binding that leaves insert state. To avoid the
-conflict, `claude-cli` locally rebinds `<escape>` inside the Claude buffer
-so it sends a raw `ESC` to the TUI instead — the override is scoped to that
-single buffer, so the rest of your evil bindings (including `C-w` window
-navigation) keep working everywhere else.
+`evil-mode`'s default binding that leaves insert state. `claude-cli` keeps
+plain `ESC` reserved for `evil-mode` and binds `C-<escape>` inside the
+Claude buffer to send a raw `ESC` to the TUI when you need it.
 
 If `evil` isn't loaded, nothing changes.

@@ -22,7 +22,7 @@
 ;;   M-x claude-cli-clear       Clear the current conversation context.
 ;;   M-x claude-cli-send-buffer Send the entire current buffer to the session.
 ;;   M-x claude-cli-send-region Send the active region to the session.
-;;   M-x claude-cli-send-escape Send a raw ESC to Claude (also bound to C-<escape>).
+;;   M-x claude-cli-send-escape Send a raw ESC to Claude (bound to C-<escape>).
 ;;
 ;; Customization:
 ;;
@@ -68,42 +68,6 @@ Falls back to `default-directory' if no project is found."
   (format "%s<%s>" claude-cli-buffer-name
           (abbreviate-file-name (claude-cli--project-root))))
 
-(defun claude-cli--evil-to-char-mode ()
-  "Switch the eat terminal to char mode (input goes to Claude)."
-  (when (and (derived-mode-p 'eat-mode) (fboundp 'eat-char-mode))
-    (eat-char-mode)))
-
-(defun claude-cli--evil-to-emacs-mode ()
-  "Switch the eat terminal to emacs mode (free buffer navigation)."
-  (when (and (derived-mode-p 'eat-mode) (fboundp 'eat-emacs-mode))
-    (eat-emacs-mode)))
-
-(define-minor-mode claude-cli-evil-sync-mode
-  "Mirror evil state into the eat terminal input mode.
-Insert state switches to `eat-char-mode' so keys are sent to Claude
-with a terminal-managed cursor.  Normal, visual, and motion states
-switch to `eat-emacs-mode' so the cursor moves freely with the shape
-configured via `evil-normal-state-cursor' and friends."
-  :lighter nil
-  (if claude-cli-evil-sync-mode
-      (progn
-        (add-hook 'evil-insert-state-entry-hook
-                  #'claude-cli--evil-to-char-mode nil t)
-        (add-hook 'evil-normal-state-entry-hook
-                  #'claude-cli--evil-to-emacs-mode nil t)
-        (add-hook 'evil-visual-state-entry-hook
-                  #'claude-cli--evil-to-emacs-mode nil t)
-        (add-hook 'evil-motion-state-entry-hook
-                  #'claude-cli--evil-to-emacs-mode nil t))
-    (remove-hook 'evil-insert-state-entry-hook
-                 #'claude-cli--evil-to-char-mode t)
-    (remove-hook 'evil-normal-state-entry-hook
-                 #'claude-cli--evil-to-emacs-mode t)
-    (remove-hook 'evil-visual-state-entry-hook
-                 #'claude-cli--evil-to-emacs-mode t)
-    (remove-hook 'evil-motion-state-entry-hook
-                 #'claude-cli--evil-to-emacs-mode t)))
-
 ;;;###autoload
 (defun claude-cli ()
   "Start Claude CLI in an Eat terminal in a vertical split.
@@ -130,19 +94,15 @@ its buffer instead of starting a new one."
       (other-window 1)
       (let ((eat-buf (apply #'eat claude-cli-program claude-cli-args)))
         (with-current-buffer eat-buf
-          ;; Inside Emacs, Claude Code's mouse tracking buys nothing —
-          ;; all TUI interactions have keyboard equivalents.  Disabling it
-          ;; lets click-drag text selection work normally for copying paths.
           (setq-local eat-enable-mouse nil)
-          ;; Keep ESC for evil-mode (leave insert state) and bind
-          ;; C-<escape> to send a raw ESC to Claude when needed.
+          ;; Bind C-<escape> to send a raw ESC to Claude.  Plain ESC
+          ;; is left alone so `evil-mode' can use it to leave insert
+          ;; state.
           (when (and (featurep 'evil) (fboundp 'evil-local-set-key))
-            (dolist (state '(insert normal visual motion))
-              (evil-local-set-key state (kbd "C-<escape>")
-                                  #'claude-cli-send-escape))
-            (claude-cli-evil-sync-mode 1)
-            (when (fboundp 'evil-insert-state)
-              (evil-insert-state)))
+            (evil-local-set-key 'insert (kbd "C-<escape>")
+                                #'claude-cli-send-escape)
+            (evil-local-set-key 'normal (kbd "C-<escape>")
+                                #'claude-cli-send-escape))
           (rename-buffer buf-name t)))))))
 
 (defun claude-cli--find-buffer ()
@@ -178,9 +138,7 @@ its buffer instead of starting a new one."
 
 ;;;###autoload
 (defun claude-cli-send-escape ()
-  "Send a raw ESC to the Claude CLI session.
-Bound to C-<escape> in the Claude buffer so ESC can stay
-reserved for `evil-mode' (leaving insert state)."
+  "Send a raw ESC to the Claude CLI session."
   (interactive)
   (let* ((buf (claude-cli--find-buffer))
          (proc (and buf (get-buffer-process buf))))
