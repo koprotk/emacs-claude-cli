@@ -95,14 +95,6 @@ its buffer instead of starting a new one."
       (let ((eat-buf (apply #'eat claude-cli-program claude-cli-args)))
         (with-current-buffer eat-buf
           (setq-local eat-enable-mouse nil)
-          ;; Bind C-<escape> to send a raw ESC to Claude.  Plain ESC
-          ;; is left alone so `evil-mode' can use it to leave insert
-          ;; state.
-          (when (and (featurep 'evil) (fboundp 'evil-local-set-key))
-            (evil-local-set-key 'insert (kbd "C-<escape>")
-                                #'claude-cli-send-escape)
-            (evil-local-set-key 'normal (kbd "C-<escape>")
-                                #'claude-cli-send-escape))
           (rename-buffer buf-name t)))))))
 
 (defun claude-cli--find-buffer ()

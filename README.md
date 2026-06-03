@@ -27,7 +27,7 @@ Drop `claude-cli.el` somewhere on your `load-path` and:
 | `M-x claude-cli-clear`     | Clear the current conversation context (`/clear`).         |
 | `M-x claude-cli-send-buffer` | Send the entire current buffer to the session.           |
 | `M-x claude-cli-send-region` | Send the active region to the session.                   |
-| `M-x claude-cli-send-escape` | Send a raw `ESC` to Claude (see evil-mode note below).   |
+| `M-x claude-cli-send-escape` | Send a raw `ESC` to Claude (useful with evil-mode).      |
 
 ## Customization
 
@@ -45,9 +45,19 @@ Example:
 
 ## evil-mode compatibility
 
-Claude Code uses `ESC` for several TUI interactions, which collides with
-`evil-mode`'s default binding that leaves insert state. `claude-cli` keeps
-plain `ESC` reserved for `evil-mode` and binds `C-<escape>` inside the
-Claude buffer to send a raw `ESC` to the TUI when you need it.
+If you use `evil-mode`, install
+[`evil-collection`](https://github.com/emacs-evil/evil-collection) — it
+ships an `eat` module that handles state transitions between evil and
+eat's char/semi-char modes for you. Doom Emacs users get this out of the
+box with the `:editor evil` module.
 
-If `evil` isn't loaded, nothing changes.
+Claude Code uses `ESC` for several TUI interactions, which collides with
+`evil-mode`'s default binding that leaves insert state. To send a raw
+`ESC` to Claude without leaving insert state, bind
+`claude-cli-send-escape` to a convenient key — for example:
+
+```elisp
+(with-eval-after-load 'eat
+  (evil-define-key '(insert normal) eat-mode-map
+    (kbd "C-<escape>") #'claude-cli-send-escape))
+```
