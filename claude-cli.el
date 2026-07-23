@@ -1,18 +1,18 @@
-;;; claude-cli.el --- Launch Claude CLI in an Eat terminal -*- lexical-binding: t; -*-
+;;; claude-cli.el --- Launch Claude CLI in a vterm terminal -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2026 Daniel Munoz
 
 ;; Author: Daniel Munoz
 ;; Version: 0.1.0
-;; Package-Requires: ((emacs "28.1") (eat "0.9"))
+;; Package-Requires: ((emacs "28.1") (vterm "0.0.2"))
 ;; Keywords: tools, terminals
 ;; URL: https://github.com/danielmunoz/emacs-claude-cli
 
 ;;; Commentary:
 
 ;; This package provides a convenient way to launch Claude Code CLI
-;; inside an Eat terminal buffer.  Running `M-x claude-cli' splits the
-;; frame vertically (side by side) and opens an Eat terminal running
+;; inside a vterm terminal buffer.  Running `M-x claude-cli' splits the
+;; frame vertically (side by side) and opens a vterm terminal running
 ;; the `claude' command in the current project's root directory.
 ;;
 ;; Usage:
@@ -32,7 +32,7 @@
 
 ;;; Code:
 
-(require 'eat)
+(require 'vterm)
 (require 'project)
 
 (defgroup claude-cli nil
@@ -92,10 +92,12 @@ its buffer instead of starting a new one."
       (when buf (kill-buffer buf))
       (split-window-right)
       (other-window 1)
-      (let ((eat-buf (apply #'eat claude-cli-program claude-cli-args)))
-        (with-current-buffer eat-buf
-          (setq-local eat-enable-mouse nil)
-          (rename-buffer buf-name t)))))))
+      (let ((vterm-shell (mapconcat #'shell-quote-argument
+                                     (cons claude-cli-program claude-cli-args)
+                                     " "))
+            (vterm-buffer-name buf-name)
+            (vterm-environment '("INSIDE_EMACS=")))
+        (vterm buf-name))))))
 
 (defun claude-cli--find-buffer ()
   "Find the Claude CLI buffer for the current project."
@@ -105,12 +107,13 @@ its buffer instead of starting a new one."
                 (buffer-list))))
 
 (defun claude-cli--send-string (text)
-  "Send TEXT to the Claude CLI eat terminal using bracketed paste."
+  "Send TEXT to the Claude CLI vterm terminal using bracketed paste."
   (let* ((buf (claude-cli--find-buffer))
          (proc (and buf (get-buffer-process buf))))
     (unless (and proc (process-live-p proc))
       (user-error "No active Claude CLI session found"))
-    (process-send-string proc (concat "\e[200~" text "\e[201~"))
+    (with-current-buffer buf
+      (vterm-send-string text t))
     (when-let ((win (get-buffer-window buf)))
       (select-window win))))
 
@@ -146,7 +149,9 @@ its buffer instead of starting a new one."
          (proc (and buf (get-buffer-process buf))))
     (unless (and proc (process-live-p proc))
       (user-error "No active Claude CLI session found"))
-    (process-send-string proc "/clear\n")
+    (with-current-buffer buf
+      (vterm-send-string "/clear")
+      (vterm-send-return))
     (when-let ((win (get-buffer-window buf)))
       (select-window win))))
 
@@ -160,7 +165,9 @@ SIGINT and force-kill if needed."
       (let ((proc (get-buffer-process buf))
             (win  (get-buffer-window buf)))
         (when (and proc (process-live-p proc))
-          (process-send-string proc "/exit\n")
+          (with-current-buffer buf
+            (vterm-send-string "/exit")
+            (vterm-send-return))
           (sit-for 1)
           (when (process-live-p proc)
             (interrupt-process proc)

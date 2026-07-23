@@ -1,13 +1,14 @@
 # emacs-claude-cli
 
 Launch the [Claude Code](https://docs.anthropic.com/en/docs/claude-code) CLI
-inside an [Eat](https://codeberg.org/akib/emacs-eat) terminal buffer, scoped
-to the current project's root directory.
+inside a [vterm](https://github.com/akermu/emacs-libvterm) terminal buffer,
+scoped to the current project's root directory.
 
 ## Requirements
 
 - Emacs 28.1+
-- [`eat`](https://codeberg.org/akib/emacs-eat) 0.9+
+- [`vterm`](https://github.com/akermu/emacs-libvterm) (builds a native module —
+  needs `cmake` and a C compiler on first install)
 - The `claude` executable on your `PATH`
 
 ## Installation
@@ -47,8 +48,8 @@ Example:
 
 If you use `evil-mode`, install
 [`evil-collection`](https://github.com/emacs-evil/evil-collection) — it
-ships an `eat` module that handles state transitions between evil and
-eat's char/semi-char modes for you. Doom Emacs users get this out of the
+ships a `vterm` module that handles state transitions between evil and
+vterm's insert/normal modes for you. Doom Emacs users get this out of the
 box with the `:editor evil` module.
 
 Claude Code uses `ESC` for several TUI interactions, which collides with
@@ -57,7 +58,7 @@ Claude Code uses `ESC` for several TUI interactions, which collides with
 `claude-cli-send-escape` to a convenient key — for example:
 
 ```elisp
-(with-eval-after-load 'eat
-  (evil-define-key '(insert normal) eat-mode-map
+(with-eval-after-load 'vterm
+  (evil-define-key '(insert normal) vterm-mode-map
     (kbd "C-<escape>") #'claude-cli-send-escape))
 ```
